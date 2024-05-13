@@ -1,40 +1,39 @@
-import * as path from 'path'
+import { chalk, fs, PLATFORMS, recursiveMerge } from '@tarojs/helper'
+import { PLATFORM_TYPE } from '@tarojs/shared'
 import { get, mapValues, merge } from 'lodash'
-import { FRAMEWORK_MAP } from '@tarojs/helper'
-import { addLeadingSlash, addTrailingSlash } from '../util'
+import * as path from 'path'
+
+import { addTrailingSlash, AppHelper, parseHtmlScript } from '../utils'
 import {
   getCopyWebpackPlugin,
   getDefinePlugin,
   getDevtool,
   getHtmlWebpackPlugin,
-  getMiniCssExtractPlugin,
   getMainPlugin,
-  getFastRefreshPlugin,
-  getModule,
+  getMiniCssExtractPlugin,
   getOutput,
+  parseModule,
   processEnvOption
-} from '../util/chain'
-import { BuildConfig } from '../util/types'
+} from '../utils/chain'
+import { componentConfig } from '../utils/component'
 import getBaseChain from './base.conf'
-import { customVueChain } from './vue'
-import { customVue3Chain } from './vue3'
 
-const emptyObj = {}
+import type { BuildConfig } from '../utils/types'
 
-export default function (appPath: string, config: Partial<BuildConfig>): any {
+export default function (appPath: string, config: Partial<BuildConfig>, appHelper: AppHelper): any {
   const chain = getBaseChain(appPath, config)
   const {
     alias = {},
     copy,
-    entry = emptyObj,
+    entry = {},
     entryFileName = 'app',
-    output = emptyObj,
+    output = {},
     sourceRoot = 'src',
     outputRoot = 'dist',
-    publicPath = '',
+    publicPath = '/',
     staticDirectory = 'static',
     chunkDirectory = 'chunk',
-    router = emptyObj,
+    router = {},
 
     designWidth = 750,
     deviceRatio,
@@ -42,39 +41,72 @@ export default function (appPath: string, config: Partial<BuildConfig>): any {
     sourceMapType,
     enableExtract = false,
 
-    defineConstants = emptyObj,
-    env = emptyObj,
-    styleLoaderOption = emptyObj,
-    cssLoaderOption = emptyObj,
-    sassLoaderOption = emptyObj,
-    lessLoaderOption = emptyObj,
-    stylusLoaderOption = emptyObj,
-    mediaUrlLoaderOption = emptyObj,
-    fontUrlLoaderOption = emptyObj,
-    imageUrlLoaderOption = emptyObj,
+    defineConstants = {},
+    env = {},
+    styleLoaderOption = {},
+    cssLoaderOption = {},
+    sassLoaderOption = {},
+    lessLoaderOption = {},
+    stylusLoaderOption = {},
+    mediaUrlLoaderOption = {},
+    fontUrlLoaderOption = {},
+    imageUrlLoaderOption = {},
 
-    miniCssExtractPluginOption = emptyObj,
+    miniCssExtractPluginOption = {},
     esnextModules = [],
 
-    useHtmlComponents = false,
+    compile = {},
+    postcss = {},
+    htmlPluginOption = {},
 
-    postcss = emptyObj
+    buildAdapter = PLATFORMS.H5,
+    framework = 'react',
+
+    useDeprecatedAdapterComponent = false
   } = config
   const sourceDir = path.join(appPath, sourceRoot)
-  const outputDir = path.join(appPath, outputRoot)
-  const plugin = {} as any
-
   const isMultiRouterMode = get(router, 'mode') === 'multi'
 
-  plugin.mainPlugin = getMainPlugin({
-    framework: config.framework,
-    entryFileName,
-    sourceDir,
-    outputDir,
-    routerConfig: router,
-    useHtmlComponents,
+  const { rule, postcssOption } = parseModule(appPath, {
     designWidth,
-    deviceRatio
+    deviceRatio,
+    enableExtract,
+    enableSourceMap,
+
+    styleLoaderOption,
+    cssLoaderOption,
+    lessLoaderOption,
+    sassLoaderOption,
+    stylusLoaderOption,
+    fontUrlLoaderOption,
+    imageUrlLoaderOption,
+    mediaUrlLoaderOption,
+    esnextModules,
+
+    compile,
+    postcss,
+    sourceDir,
+    staticDirectory
+  })
+  const [, pxtransformOption] = postcssOption.find(([name]) => name === 'postcss-pxtransform') || []
+
+  const plugin = {} as any
+
+  plugin.mainPlugin = getMainPlugin({
+    /** paths */
+    sourceDir,
+    entryFileName,
+    /** config & message */
+    framework: config.framework,
+    frameworkExts: config.frameworkExts,
+    routerConfig: router,
+    runtimePath: config.runtimePath,
+    pxTransformConfig: pxtransformOption?.config || {},
+    /** building mode */
+    isBuildNativeComp: config.isBuildNativeComp,
+    /** hooks & methods */
+    onCompilerMake: config.onCompilerMake,
+    onParseCreateElement: config.onParseCreateElement,
   })
 
   if (enableExtract) {
@@ -91,85 +123,93 @@ export default function (appPath: string, config: Partial<BuildConfig>): any {
     plugin.copyWebpackPlugin = getCopyWebpackPlugin({ copy, appPath })
   }
 
-  if (isMultiRouterMode) {
-    merge(plugin, mapValues(entry, (filePath, entryName) => {
-      return getHtmlWebpackPlugin([{
-        filename: `${entryName}.html`,
-        template: path.join(appPath, sourceRoot, 'index.html'),
-        chunks: [entryName]
-      }])
-    }))
-  } else {
-    plugin.htmlWebpackPlugin = getHtmlWebpackPlugin([{
-      filename: 'index.html',
-      template: path.join(appPath, sourceRoot, 'index.html')
-    }])
+  const htmlScript = parseHtmlScript(pxtransformOption)
+  if (process.env.NODE_ENV !== 'production' && htmlScript !== undefined && Object.hasOwnProperty.call(htmlPluginOption, 'script')) {
+    console.warn(
+      chalk.yellowBright('配置文件覆盖 htmlPluginOption.script 参数会导致 pxtransform 脚本失效，请慎重使用！')
+    )
   }
+
+  const template = path.join(sourceDir, 'index.html')
+  if (fs.existsSync(template)) {
+    if (isMultiRouterMode) {
+      delete entry[entryFileName]
+      appHelper.pagesConfigList.forEach((page, index) => {
+        entry[index] = [page]
+      })
+      merge(plugin, mapValues(entry, (_filePath, entryName) => {
+        return getHtmlWebpackPlugin([recursiveMerge({
+          filename: `${entryName}.html`,
+          script: htmlScript,
+          template,
+          chunks: [entryName]
+        }, htmlPluginOption)])
+      }))
+    } else {
+      plugin.htmlWebpackPlugin = getHtmlWebpackPlugin([recursiveMerge({
+        filename: 'index.html',
+        script: htmlScript,
+        template,
+      }, htmlPluginOption)])
+    }
+  }
+
+  env.FRAMEWORK = JSON.stringify(framework)
+  env.TARO_ENV = JSON.stringify(buildAdapter)
+  env.TARO_PLATFORM = JSON.stringify(process.env.TARO_PLATFORM || PLATFORM_TYPE.WEB)
+  env.SUPPORT_TARO_POLYFILL = env.SUPPORT_TARO_POLYFILL || '"enabled"'
+  env.SUPPORT_DINGTALK_NAVIGATE = env.SUPPORT_DINGTALK_NAVIGATE || '"disabled"'
+  defineConstants.DEPRECATED_ADAPTER_COMPONENT = JSON.stringify(!!useDeprecatedAdapterComponent)
   plugin.definePlugin = getDefinePlugin([processEnvOption(env), defineConstants])
 
-  if (config.framework === FRAMEWORK_MAP.REACT && config.devServer?.hot !== false) {
-    // 默认开启 fast-refresh
-    plugin.fastRefreshPlugin = getFastRefreshPlugin()
-  }
-
   const mode = 'development'
+  const webpackOutput = getOutput(appPath, [{
+    outputRoot,
+    publicPath: ['', 'auto'].includes(publicPath) ? publicPath : addTrailingSlash(publicPath),
+    chunkDirectory
+  }, output])
 
-  if (config.framework === FRAMEWORK_MAP.REACT || config.framework === FRAMEWORK_MAP.NERV) {
-    if (useHtmlComponents && config.framework === FRAMEWORK_MAP.REACT) {
-      alias['@tarojs/components$'] = '@tarojs/components-react/index'
-    } else {
-      alias['@tarojs/components$'] = '@tarojs/components/dist-h5/react'
-    }
+  config.modifyComponentConfig?.(componentConfig, config)
+
+  if (config.isBuildNativeComp) {
+    // Note: 当开发者没有配置时，优先使用 module 导出组件
+    webpackOutput.libraryTarget ||= 'commonjs'
   }
 
   chain.merge({
     mode,
     devtool: getDevtool({ enableSourceMap, sourceMapType }),
     entry,
-    output: getOutput(appPath, [{
-      outputRoot,
-      publicPath: addLeadingSlash(addTrailingSlash(publicPath)),
-      chunkDirectory
-    }, output]),
+    output: webpackOutput,
     resolve: { alias },
-    module: getModule(appPath, {
-      designWidth,
-      deviceRatio,
-      enableExtract,
-      enableSourceMap,
-
-      styleLoaderOption,
-      cssLoaderOption,
-      lessLoaderOption,
-      sassLoaderOption,
-      stylusLoaderOption,
-      fontUrlLoaderOption,
-      imageUrlLoaderOption,
-      mediaUrlLoaderOption,
-      esnextModules,
-
-      postcss,
-      staticDirectory
-    }),
+    module: { rule },
     plugin,
     optimization: {
-      noEmitOnErrors: true
+      noEmitOnErrors: true,
+      splitChunks: {
+        chunks: 'initial',
+        minSize: 0,
+        cacheGroups: {
+          common: {
+            name: 'common',
+            minChunks: 2,
+            priority: 1
+          },
+          vendors: {
+            name: 'vendors',
+            minChunks: 2,
+            test: module => /[\\/]node_modules[\\/]/.test(module.resource),
+            priority: 10
+          },
+          taro: {
+            name: 'taro',
+            test: module => /@tarojs[\\/][a-z]+/.test(module.context),
+            priority: 100
+          }
+        }
+      }
     }
   })
-
-  switch (config.framework) {
-    case FRAMEWORK_MAP.VUE:
-      customVueChain(chain, {
-        styleLoaderOption
-      })
-      break
-    case FRAMEWORK_MAP.VUE3:
-      customVue3Chain(chain, {
-        styleLoaderOption
-      })
-      break
-    default:
-  }
 
   return chain
 }

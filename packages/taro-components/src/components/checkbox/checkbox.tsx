@@ -1,4 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Component, h, ComponentInterface, Prop, Event, EventEmitter, Host, Watch, Element, State } from '@stencil/core'
 
 @Component({
@@ -8,10 +7,13 @@ import { Component, h, ComponentInterface, Prop, Event, EventEmitter, Host, Watc
 export class Checkbox implements ComponentInterface {
   private inputEl: HTMLInputElement
   @Prop() name: string
-  @Prop() value = ''
+  @Prop({ mutable: true }) value: string | number = ''
   @Prop() color: string
   @Prop({ mutable: true }) id: string
   @Prop() checked = false
+  @Prop() disabled = false
+  @Prop() nativeProps = {}
+
   @State() isWillLoadCalled = false
 
   @Element() el: HTMLElement
@@ -35,7 +37,7 @@ export class Checkbox implements ComponentInterface {
     this.id && this.el.removeAttribute('id')
   }
 
-  handleChange = e => {
+  handleChange = (e: Event) => {
     e.stopPropagation()
     this.onChange.emit({
       value: this.value
@@ -43,7 +45,7 @@ export class Checkbox implements ComponentInterface {
   }
 
   render () {
-    const { checked, name, color, value } = this
+    const { checked, name, color, value, disabled, nativeProps } = this
 
     return (
       <Host
@@ -61,7 +63,9 @@ export class Checkbox implements ComponentInterface {
           class='taro-checkbox_checked'
           style={{ color }}
           checked={checked}
+          disabled={disabled}
           onChange={this.handleChange}
+          {...nativeProps}
         />
         <slot />
       </Host>

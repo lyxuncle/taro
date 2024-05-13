@@ -1,9 +1,24 @@
 import { processApis } from '@tarojs/shared'
+
 import { needPromiseApis } from './apis-list'
+
+import type { IApiDiff } from '@tarojs/shared'
 
 declare const my: any
 
-const apiDiff = {
+const apiDiff: IApiDiff = {
+  login: {
+    alias: 'getAuthCode',
+    options: {
+      set: [
+        {
+          key: 'scopes',
+          value: 'auth_base'
+        }
+      ]
+    }
+  },
+
   showActionSheet: {
     options: {
       change: [{
@@ -20,6 +35,15 @@ const apiDiff = {
       }, {
         old: 'icon',
         new: 'type'
+      }],
+      set: [{
+        key: 'type',
+        value (options) {
+          if (options.type === 'error') {
+            return 'fail'
+          }
+          return options.type
+        }
       }]
     }
   },
@@ -28,6 +52,15 @@ const apiDiff = {
       change: [{
         old: 'title',
         new: 'content'
+      }],
+      set: [{
+        key: 'content',
+        value: function value (options) {
+          if (options.content === undefined) {
+            options.content = ''
+          }
+          return options.content
+        }
       }]
     }
   },
@@ -167,8 +200,131 @@ const apiDiff = {
     alias: 'disconnectBLEDevice'
   }
 }
-
-const nativeRequest = my.canIUse('request') ? my.request : my.httpRequest
+/**
+ * 抹平API返回值的差异
+ * key 为 alipay小程序中的api名称
+ */
+const asyncResultApiDiff = {
+  alert: {
+    res: {
+      set: [
+        {
+          key: 'confirm',
+          value (res) {
+            return res.success
+          }
+        }
+      ],
+    }
+  },
+  getScreenBrightness: {
+    res: {
+      set: [
+        {
+          key: 'value',
+          value (res) {
+            return res.brightness
+          }
+        }
+      ],
+      remove: ['brightness']
+    }
+  },
+  scan: {
+    res: {
+      set: [
+        {
+          key: 'result',
+          value (res) {
+            return res.code
+          }
+        }
+      ]
+    }
+  },
+  getClipboard: {
+    res: {
+      set: [
+        {
+          key: 'data',
+          value (res) {
+            return res.text
+          }
+        }
+      ]
+    }
+  },
+  chooseImage: {
+    res: {
+      set: [
+        {
+          key: 'tempFilePaths',
+          value (res) {
+            return res.apFilePaths
+          }
+        }
+      ]
+    }
+  },
+  downloadFile: {
+    res: {
+      set: [
+        {
+          key: 'tempFilePath',
+          value (res) {
+            return res.apFilePath
+          }
+        }
+      ]
+    }
+  },
+  getAuthCode: {
+    res: {
+      set: [{
+        key: 'code',
+        value (res) {
+          return res.authCode
+        }
+      }]
+    }
+  },
+  getExtConfig: {
+    res: {
+      set: [{
+        key: 'extConfig',
+        value (res) {
+          return res.data
+        }
+      }]
+    }
+  },
+  saveFile: {
+    res: {
+      set: [
+        {
+          key: 'savedFilePath',
+          value (res) {
+            return res.apFilePath
+          }
+        }
+      ]
+    }
+  },
+  getBLEDeviceServices: {
+    res: {
+      set: [
+        {
+          key: 'services',
+          value (res) {
+            return res.services.map(item => {
+              return { uuid: item.serviceId, isPrimary: item.isPrimary }
+            })
+          }
+        }
+      ]
+    }
+  }
+}
 
 export function request (options) {
   options = options || {}
@@ -209,7 +365,8 @@ export function request (options) {
     options.complete = res => {
       originComplete && originComplete(res)
     }
-
+    // 改为实时获取原生API，防止用户修改原生API后无法同步
+    const nativeRequest = my.canIUse('request') ? my.request : my.httpRequest
     requestTask = nativeRequest(options)
   })
   p.abort = (cb) => {
@@ -318,21 +475,8 @@ export function modifyApis (apis: Set<string>) {
   apis.delete('alert')
 }
 
-export function modifyAsyncResult (key, res) {
-  if (key === 'saveFile') {
-    res.savedFilePath = res.apFilePath
-  } else if (key === 'downloadFile') {
-    res.tempFilePath = res.apFilePath
-  } else if (key === 'chooseImage') {
-    res.tempFilePaths = res.apFilePaths
-  } else if (key === 'getClipboard') {
-    res.data = res.text
-  } else if (key === 'scan') {
-    res.result = res.code
-  } else if (key === 'getScreenBrightness') {
-    res.value = res.brightness
-    delete res.brightness
-  } else if (key === 'connectSocket') {
+export function modifyAsyncResult (key: string, res) {
+  if (key === 'connectSocket') {
     res.onClose = function (cb) {
       my.onSocketClose(cb)
     }
@@ -357,6 +501,31 @@ export function modifyAsyncResult (key, res) {
       my.closeSocket()
     }
   }
+
+  Object.keys(asyncResultApiDiff).forEach(apiKey => {
+    const apiItem = asyncResultApiDiff[apiKey]
+    if (key !== apiKey) {
+      return
+    }
+    if (!apiItem.res) {
+      return
+    }
+
+    const set = apiItem.res.set
+    const remove = apiItem.res.remove
+
+    if (set) {
+      set.forEach(setItem => {
+        res[setItem.key] = typeof setItem.value === 'function' ? setItem.value(res) : setItem.value
+      })
+    }
+
+    if (remove) {
+      remove.forEach(removeItem => {
+        delete res[removeItem]
+      })
+    }
+  })
 }
 
 export function initNativeApi (taro) {

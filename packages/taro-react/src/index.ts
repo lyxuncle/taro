@@ -1,11 +1,29 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { render, ContainerMap } from './render'
-import { TaroReconciler } from './reconciler'
 import { TaroElement } from '@tarojs/runtime'
+import { ensure, isFunction } from '@tarojs/shared'
 import { ReactNode } from 'react'
-import { ensure } from '@tarojs/shared'
 
-const unstable_batchedUpdates = TaroReconciler.batchedUpdates
+import { finishEventHandler } from './event'
+import { TaroReconciler } from './reconciler'
+import { ContainerMap, createRoot, render } from './render'
+
+let isInsideEventHandler = false
+
+// 重新包裹 batchedUpdates，使其可以在触发事件后执行 finishEventHandler
+const unstable_batchedUpdates = (fn, a) => {
+  if (isInsideEventHandler) {
+    return fn(a)
+  }
+
+  isInsideEventHandler = true
+
+  try {
+    return TaroReconciler.batchedUpdates(fn, a)
+  } finally {
+    isInsideEventHandler = false
+    finishEventHandler()
+  }
+}
 
 function unmountComponentAtNode (dom: TaroElement) {
   ensure(dom && [1, 8, 9, 11].includes(dom.nodeType), 'unmountComponentAtNode(...): Target container is not a DOM element.')
@@ -36,7 +54,7 @@ function findDOMNode (comp?: TaroElement | ReactNode) {
   return TaroReconciler.findHostInstance(comp as Record<string, any>)
 }
 
-const portalType = typeof Symbol === 'function' && Symbol.for
+const portalType = isFunction(Symbol) && Symbol.for
   ? Symbol.for('react.portal')
   : 0xeaca
 
@@ -55,15 +73,17 @@ function createPortal (
 }
 
 export {
-  render,
-  unstable_batchedUpdates,
-  unmountComponentAtNode,
+  createPortal,
+  createRoot,
   findDOMNode,
-  createPortal
+  render,
+  unmountComponentAtNode,
+  unstable_batchedUpdates
 }
 
 export default {
   render,
+  createRoot,
   unstable_batchedUpdates,
   unmountComponentAtNode,
   findDOMNode,

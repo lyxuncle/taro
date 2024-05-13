@@ -1,3 +1,4 @@
+export const MODIFY_APP_CONFIG = 'modifyAppConfig'
 export const MODIFY_WEBPACK_CHAIN = 'modifyWebpackChain'
 export const MODIFY_BUILD_ASSETS = 'modifyBuildAssets'
 export const MODIFY_MINI_CONFIGS = 'modifyMiniConfigs'
@@ -7,3 +8,6 @@ export const ON_COMPILER_MAKE = 'onCompilerMake'
 export const ON_PARSE_CREATE_ELEMENT = 'onParseCreateElement'
 export const ON_BUILD_START = 'onBuildStart'
 export const ON_BUILD_FINISH = 'onBuildFinish'
+export const ON_BUILD_COMPLETE = 'onBuildComplete'
+
+export const MODIFY_CREATE_TEMPLATE = 'modifyCreateTemplate'

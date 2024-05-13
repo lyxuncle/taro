@@ -1,4 +1,4 @@
-import * as fs from 'fs-extra'
+import { fs } from '@tarojs/helper'
 import * as path from 'path'
 
 let compile
@@ -10,11 +10,10 @@ describe('mini-split-chunks', () => {
   })
 
   beforeEach(() => {
-    jest.isolateModules(() => {
-      const compiler = require('./utils/compiler')
-      compile = compiler.compile
-      readDir = compiler.readDir
-    })
+    jest.resetModules()
+    const compiler = require('./utils/compiler')
+    compile = compiler.compile
+    readDir = compiler.readDir
   })
 
   test('should process mini-split-chunks', async () => {

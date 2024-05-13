@@ -1,41 +1,41 @@
-import * as fs from 'fs-extra'
-import * as path from 'path'
-import * as CopyWebpackPlugin from 'copy-webpack-plugin'
-import CssoWebpackPlugin from 'csso-webpack-plugin'
-import * as MiniCssExtractPlugin from 'mini-css-extract-plugin'
-import * as sass from 'sass'
-import { partial, cloneDeep } from 'lodash'
-import { mapKeys, pipe } from 'lodash/fp'
-import * as TerserPlugin from 'terser-webpack-plugin'
-import * as webpack from 'webpack'
-import { PostcssOption, ICopyOptions, IPostcssOption } from '@tarojs/taro/types/compile'
 import {
-  recursiveMerge,
+  chalk,
+  fs,
   isNodeModule,
-  resolveMainFilePath,
-  REG_SASS_SASS,
-  REG_SASS_SCSS,
-  REG_LESS,
-  REG_STYLUS,
-  REG_STYLE,
-  REG_MEDIA,
+  recursiveMerge,
+  REG_CSS,
   REG_FONT,
   REG_IMAGE,
+  REG_LESS,
+  REG_MEDIA,
+  REG_SASS_SASS,
+  REG_SASS_SCSS,
   REG_SCRIPTS,
-  REG_CSS,
+  REG_STYLE,
+  REG_STYLUS,
   REG_TEMPLATE,
-  chalk
+  resolveMainFilePath,
+  SCRIPT_EXT
 } from '@tarojs/helper'
 import { getSassLoaderOption } from '@tarojs/runner-utils'
+import * as CopyWebpackPlugin from 'copy-webpack-plugin'
+import CssoWebpackPlugin from 'csso-webpack-plugin'
+import { cloneDeep, partial } from 'lodash'
+import { mapKeys, pipe } from 'lodash/fp'
+import * as MiniCssExtractPlugin from 'mini-css-extract-plugin'
+import * as path from 'path'
+import * as sass from 'sass'
+import * as TerserPlugin from 'terser-webpack-plugin'
+import * as webpack from 'webpack'
 
+import defaultTerserOptions from '../config/terserOptions'
+import BuildNativePlugin from '../plugins/BuildNativePlugin'
+import MiniPlugin from '../plugins/MiniPlugin'
+import MiniSplitChunksPlugin from '../plugins/MiniSplitChunksPlugin'
 import { getPostcssPlugins } from './postcss.conf'
 
-import MiniPlugin from '../plugins/MiniPlugin'
-import BuildNativePlugin from '../plugins/BuildNativePlugin'
-import { IOption, IBuildConfig } from '../utils/types'
-import defaultTerserOptions from '../config/terserOptions'
-
-import MiniSplitChunksPlugin from '../plugins/MiniSplitChunksPlugin'
+import type { ICopyOptions, IPostcssOption, PostcssOption } from '@tarojs/taro/types/compile'
+import type { IBuildConfig, IOption } from '../utils/types'
 
 interface IRule {
   test?: any
@@ -60,10 +60,15 @@ interface IRule {
 }
 
 export const makeConfig = async (buildConfig: IBuildConfig) => {
+  // 过滤原因：webpack4 不支持 output.clean 选项， 且 packages/taro-service/src/platform-plugin-base/web.ts 中实现了 output.clean
+  if (buildConfig.output && 'clean' in buildConfig.output) {
+    delete buildConfig.output.clean
+  }
   const sassLoaderOption = await getSassLoaderOption(buildConfig)
   return {
     ...buildConfig,
-    sassLoaderOption
+    sassLoaderOption,
+    frameworkExts: buildConfig.frameworkExts || SCRIPT_EXT
   }
 }
 
@@ -139,6 +144,7 @@ export const getLessLoader = pipe(mergeOption, partial(getLoader, 'less-loader')
 export const getStylusLoader = pipe(mergeOption, partial(getLoader, 'stylus-loader'))
 export const getUrlLoader = pipe(mergeOption, partial(getLoader, 'url-loader'))
 export const getFileLoader = pipe(mergeOption, partial(getLoader, 'file-loader'))
+export const getMiniXScriptLoader = pipe(mergeOption, partial(getLoader, path.resolve(__dirname, '../loaders/miniXScriptLoader')))
 export const getMiniTemplateLoader = pipe(mergeOption, partial(getLoader, path.resolve(__dirname, '../loaders/miniTemplateLoader')))
 export const getResolveUrlLoader = pipe(mergeOption, partial(getLoader, 'resolve-url-loader'))
 
@@ -155,13 +161,13 @@ export const getTerserPlugin = ([enableSourceMap, terserOptions]) => {
     parallel: true,
     sourceMap: enableSourceMap,
     terserOptions: recursiveMerge({}, defaultTerserOptions, terserOptions)
-  })
+  } as TerserPlugin.BasePluginOptions)
 }
 export const getCssoWebpackPlugin = ([cssoOption]) => {
   return pipe(listify, partial(getPlugin, CssoWebpackPlugin))([mergeOption([defaultCSSCompressOption, cssoOption]), REG_STYLE])
 }
 export const getCopyWebpackPlugin = ({ copy, appPath }: {
-  copy: ICopyOptions,
+  copy: ICopyOptions
   appPath: string
 }) => {
   const args = [
@@ -250,6 +256,7 @@ export const getModule = (appPath: string, {
   const miniTemplateLoader = getMiniTemplateLoader([{
     buildAdapter
   }])
+  const miniXScriptLoader = getMiniXScriptLoader([{}])
 
   const cssLoader = getCssLoader(cssOptions)
 
@@ -315,8 +322,9 @@ export const getModule = (appPath: string, {
   const stylusLoader = getStylusLoader([{ sourceMap: enableSourceMap }, stylusLoaderOption])
 
   const cssLoaders: {
-    include?;
-    use;
+    include?
+    resourceQuery?
+    use
   }[] = [{
     use: [
       extractCssLoader,
@@ -332,6 +340,15 @@ export const getModule = (appPath: string, {
     if (cssModuleOptions.config!.namingPattern === 'module') {
       /* 不排除 node_modules 内的样式 */
       cssModuleCondition = styleModuleReg
+      // for vue
+      cssLoaders.unshift({
+        resourceQuery: /module=/,
+        use: [
+          extractCssLoader,
+          cssLoaderWithModule,
+          postcssLoader
+        ]
+      })
     } else {
       cssModuleCondition = {
         and: [
@@ -375,19 +392,16 @@ export const getModule = (appPath: string, {
     }
   }
 
-  if (compile.exclude && compile.exclude.length) {
-    scriptRule.exclude = [
-      ...compile.exclude,
-      filename => /node_modules/.test(filename) && !(/taro/.test(filename))
-    ]
-  } else if (compile.include && compile.include.length) {
-    scriptRule.include = [
-      ...compile.include,
-      sourceDir,
-      filename => /taro/.test(filename)
-    ]
-  } else {
-    scriptRule.exclude = [filename => /node_modules/.test(filename) && !(/taro/.test(filename))]
+  scriptRule.include = [
+    sourceDir,
+    filename => /(?<=node_modules[\\/]).*taro/.test(filename)
+  ]
+  if (Array.isArray(compile.include)) {
+    scriptRule.include.unshift(...compile.include)
+  }
+
+  if (Array.isArray(compile.exclude)) {
+    scriptRule.exclude = [...compile.exclude]
   }
 
   const rule: Record<string, IRule> = {
@@ -416,9 +430,44 @@ export const getModule = (appPath: string, {
       test: REG_TEMPLATE,
       use: [getFileLoader([{
         useRelativePath: true,
-        name: `[path][name]${fileType.templ}`,
+        name: (resourcePath: string) => {
+          // 差异点：
+          // webpack4 中的 resourcePath 是绝对路径
+          // webpack5 中的 filename 是相对于 appPath 的文件路径名称
+          // appPath /xxx/uuu/aaa
+          // sourceDir /xxx/uuu/aaa/bbb/ccc/src
+
+          // 因此在 webpack4 中如果包含 sourceDir，证明是在 src 内的路径
+          if (resourcePath.includes(sourceDir)) {
+            // 直接将 /xxx/src/yyy/zzz.wxml 转换成 yyy/zzz.wxml 即可
+            return resourcePath.replace(sourceDir + '/', '').replace(/node_modules/gi, 'npm')
+          } else {
+            // 否则，证明是外层，存在一下两种可能
+            // resourcePath /xxx/uuu/aaa/node_modules/yy/zzz.wxml
+            // --> result: npm/yy/zzz.wxml
+
+            // resourcePath /xxx/uuu/aaa/bbb/abc/yy/zzz.wxml
+            // --> result: bbb/abc/yy/zzz.wxml
+            return resourcePath.replace(appPath + '/', '').replace(/node_modules/gi, 'npm')
+          }
+        },
         context: sourceDir
       }]), miniTemplateLoader]
+    },
+    xscript: {
+      test: new RegExp(`\\${fileType.xs || 'wxs'}$`),
+      use: [getFileLoader([{
+        useRelativePath: true,
+        name: (resourcePath) => {
+          if (resourcePath.includes(sourceDir)) {
+            return resourcePath.replace(sourceDir + '/', '').replace(/node_modules/gi, 'npm')
+          } else {
+            return resourcePath.replace(appPath + '/', '').replace(/node_modules/gi, 'npm')
+          }
+        },
+        context: sourceDir
+      }]),
+      miniXScriptLoader]
     },
     media: {
       test: REG_MEDIA,
@@ -506,7 +555,7 @@ export const getEntry = ({
 
 export function getOutput (appPath: string, [{ outputRoot, publicPath, globalObject }, customOutput]) {
   return {
-    path: path.join(appPath, outputRoot),
+    path: path.resolve(appPath, outputRoot),
     publicPath,
     filename: '[name].js',
     chunkFilename: '[name].js',
@@ -520,33 +569,21 @@ export function getDevtool (enableSourceMap, sourceMapType = 'cheap-module-sourc
 }
 
 export function getRuntimeConstants (runtime) {
-  const constants = {
-    ENABLE_INNER_HTML: true,
-    ENABLE_ADJACENT_HTML: true,
-    ENABLE_TEMPLATE_CONTENT: true,
-    ENABLE_CLONE_NODE: true,
-    ENABLE_SIZE_APIS: false
-  }
+  const constants: Record<string, boolean> = {}
 
-  if (runtime.enableInnerHTML !== undefined) {
-    constants.ENABLE_INNER_HTML = runtime.enableInnerHTML
-  }
+  constants.ENABLE_INNER_HTML = runtime.enableInnerHTML ?? true
 
-  if (runtime.enableAdjacentHTML !== undefined) {
-    constants.ENABLE_ADJACENT_HTML = runtime.enableAdjacentHTML
-  }
+  constants.ENABLE_ADJACENT_HTML = runtime.enableAdjacentHTML ?? false
 
-  if (runtime.enableSizeAPIs !== undefined) {
-    constants.ENABLE_SIZE_APIS = runtime.enableSizeAPIs
-  }
+  constants.ENABLE_SIZE_APIS = runtime.enableSizeAPIs ?? false
 
-  if (runtime.enableTemplateContent !== undefined) {
-    constants.ENABLE_TEMPLATE_CONTENT = runtime.enableTemplateContent
-  }
+  constants.ENABLE_TEMPLATE_CONTENT = runtime.enableTemplateContent ?? false
 
-  if (runtime.enableCloneNode !== undefined) {
-    constants.ENABLE_CLONE_NODE = runtime.enableCloneNode
-  }
+  constants.ENABLE_CLONE_NODE = runtime.enableCloneNode ?? false
+
+  constants.ENABLE_CONTAINS = runtime.enableContains ?? false
+
+  constants.ENABLE_MUTATION_OBSERVER = runtime.enableMutationObserver ?? false
 
   return constants
 }

@@ -1,6 +1,7 @@
 import { TaroPlatformBase } from '@tarojs/service'
-import { Template } from './template'
+
 import { components } from './components'
+import { Template } from './template'
 
 const PACKAGE_NAME = '@tarojs/plugin-platform-tt'
 
@@ -9,11 +10,13 @@ export default class TT extends TaroPlatformBase {
   globalObject = 'tt'
   projectConfigJson = 'project.tt.json'
   runtimePath = `${PACKAGE_NAME}/dist/runtime`
+  taroComponentsPath = `${PACKAGE_NAME}/dist/components-react`
   fileType = {
     templ: '.ttml',
     style: '.ttss',
     config: '.json',
-    script: '.js'
+    script: '.js',
+    xs: '.sjs'
   }
 
   template = new Template()

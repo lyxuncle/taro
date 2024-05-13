@@ -58,6 +58,7 @@ function getIndexByValues(range: any[] = [], value: any[] = []): number[] {
   })
 }
 
+// Todo: 支持 defaultValue
 export default class MultiSelector extends React.Component<MultiSelectorProps, MultiSelectorState> {
   static defaultProps = {
     range: [],
@@ -72,7 +73,7 @@ export default class MultiSelector extends React.Component<MultiSelectorProps, M
     value: []
   }
 
-  dismissByOk = false;
+  dismissByOk = false
 
   static getDerivedStateFromProps(nextProps: MultiSelectorProps, lastState: MultiSelectorState): MultiSelectorState | null {
     let ret: any = null
@@ -88,6 +89,7 @@ export default class MultiSelector extends React.Component<MultiSelectorProps, M
     }
 
     if (!shallowDiffValue(nextProps.value, lastState.pValue)) {
+      // 初始化的时候和点击确认时候，会走到里面
       ret = ret || {}
       ret.pValue = nextProps.value
       let tmp = (ret && ret.range) || lastState.range
@@ -136,14 +138,17 @@ export default class MultiSelector extends React.Component<MultiSelectorProps, M
   }
 
   render(): JSX.Element {
-    const { children, disabled } = this.props
+    const { children, disabled, itemStyle, indicatorStyle } = this.props
     const { cols, range, value } = this.state
 
     return (
+      // @ts-ignore
       <AntPicker
         data={range}
         value={value}
         cols={cols}
+        itemStyle={itemStyle}
+        indicatorStyle={indicatorStyle}
         onChange={this.onChange}
         onPickerChange={this.onPickerChange}
         onOk={this.onOk}

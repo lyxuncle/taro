@@ -1,5 +1,9 @@
+import { chalk } from '@tarojs/helper'
 import * as path from 'path'
-import validator from '../doctor/eslintValidator'
+
+import doctor from '../doctor'
+
+const validator = doctor.validators[4]
 
 describe('eslint validator of doctor', () => {
   let cwd = ''
@@ -11,39 +15,43 @@ describe('eslint validator of doctor', () => {
     process.chdir(cwd)
   })
 
-  it('should lint for react', () => {
+  it('should lint for react', async () => {
     process.chdir(path.join(__dirname, 'fixtures/default'))
-    const { raw } = validator({
+    const { isValid, messages } = await validator({
       projectConfig: {
         framework: 'react',
         sourceRoot: 'src'
-      }
+      },
+      chalk
     })
-
-    expect(raw).toBe('')
+    expect(isValid).toBe(true)
+    expect(messages.length).toBe(2)
   })
 
-  it('should lint for nerv', () => {
+  it('should lint for nerv', async () => {
     process.chdir(path.join(__dirname, 'fixtures/nerv'))
-    const { raw } = validator({
+    const { isValid, messages } = await validator({
       projectConfig: {
         framework: 'nerv',
         sourceRoot: 'src'
-      }
+      },
+      chalk
     })
-
-    expect(raw.includes('\'a\' is assigned a value but never used'))
+    expect(isValid).toBe(false)
+    expect(messages[1].content.includes('\'a\' is assigned a value but never used'))
   })
 
-  it('should lint for vue', () => {
+  it('should lint for vue', async () => {
     process.chdir(path.join(__dirname, 'fixtures/vue'))
-    const { raw } = validator({
+    const { isValid, messages } = await validator({
       projectConfig: {
         framework: 'vue',
         sourceRoot: 'src'
-      }
+      },
+      chalk
     })
 
-    expect(raw).toBe('')
+    expect(isValid).toBe(true)
+    expect(messages.length).toBe(2)
   })
 })

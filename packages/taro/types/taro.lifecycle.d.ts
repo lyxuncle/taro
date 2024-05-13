@@ -1,4 +1,36 @@
-declare namespace Taro {
+import Taro from './index'
+
+type TaroGetDerivedStateFromProps<P, S> =
+  /**
+   * Returns an update to a component's state based on its new props and old state.
+   *
+   * Note: its presence prevents any of the deprecated lifecycle methods from being invoked
+   */
+  (nextProps: Readonly<P>, prevState: S) => Partial<S> | null
+
+interface TaroStaticLifecycle<P, S> {
+  getDerivedStateFromProps?: TaroGetDerivedStateFromProps<P, S>
+}
+
+interface TaroNewLifecycle<P, S, SS> {
+  /**
+   * Runs before React applies the result of `render` to the document, and
+   * returns an object to be given to componentDidUpdate. Useful for saving
+   * things such as scroll position before `render` causes changes to it.
+   *
+   * Note: the presence of getSnapshotBeforeUpdate prevents any of the deprecated
+   * lifecycle events from running.
+   */
+  getSnapshotBeforeUpdate?(prevProps: Readonly<P>, prevState: Readonly<S>): SS | null
+  /**
+   * Called immediately after updating occurs. Not called for the initial render.
+   *
+   * The snapshot is only present if getSnapshotBeforeUpdate is present and returns non-null.
+   */
+  componentDidUpdate?(prevProps: Readonly<P>, prevState: Readonly<S>, snapshot?: SS): void
+}
+
+declare module './index' {
   interface PageNotFoundObject {
     /**
      * 不存在页面的路径
@@ -8,7 +40,7 @@ declare namespace Taro {
     /**
      * 打开不存在页面的 query
      */
-    query: object
+    query: Record<string, unknown>
 
     /**
      * 是否本次启动的首个页面（例如从分享等入口进来，首个页面是开发者配置的分享页面）
@@ -23,30 +55,34 @@ declare namespace Taro {
     scrollTop: number
   }
 
+  interface PageResizeObject {
+    deviceOrientation?: 'portrait' | 'landscape'
+    size: {
+      windowWidth: number
+      windowHeight: number
+      screenWidth?: number
+      screenHeight?: number
+    }
+  }
+
   interface ShareAppMessageObject {
     /**
      * 转发事件来源
      * `button`：页面内转发按钮
      * `menu`：右上角转发菜单
-     *
-     * @since 1.2.4
      */
     from?: 'button' | 'menu' | string
     /**
      * 如果 `from` 值是 `button`，则 `target` 是触发这次转发事件的 `button`，否则为 `undefined`
-     *
-     * @since 1.2.4
      */
     target?: object
     /**
      * 页面中包含 `<web-view>` 组件时，返回当前 `<web-view>` 的 url
-     *
-     * @since 1.6.4
      */
     webViewUrl?: string
   }
 
-  interface ShareAppMessageReturn {
+  interface ShareAppMessageReturnObject {
     /**
      * 	转发标题，默认为当前小程序名称
      */
@@ -62,11 +98,43 @@ declare namespace Taro {
      * 支持PNG及JPG
      * 显示图片长宽比是 5:4
      * 默认使用截图
-     *
-     * @since 1.5.0
      */
     imageUrl?: string
   }
+
+  interface WeappShareAppMessageReturnObject extends ShareAppMessageReturnObject {
+    /**
+     * 如果该参数存在，则以 resolve 结果为准，如果三秒内不 resolve，分享会使用上面传入的默认参数
+     * @supported weapp
+     * @see https://developers.weixin.qq.com/miniprogram/dev/reference/api/Page.html#onShareAppMessage-Object-object
+     * @example
+     * ```tsx
+     * import { ShareAppMessageReturnObject, useShareAppMessage } from "@tarojs/taro";
+     * // ... else code
+     * useShareAppMessage(() => {
+     *   const p = new Promise<ShareAppMessageReturnObject>(resolve => {
+     *     setTimeout(() => {
+     *       resolve({
+     *         title: "",
+     *         imageUrl: "",
+     *         path: ""
+     *       })
+     *     }, 2000)
+     *   })
+     *   return {
+     *     title: "",
+     *     imageUrl: "",
+     *     path: "",
+     *     promise: p
+     *   }
+     * });
+     * ```
+     *
+     */
+    promise: Promise<ShareAppMessageReturnObject>
+  }
+
+  type ShareAppMessageReturn = ShareAppMessageReturnObject | Promise<ShareAppMessageReturnObject> | WeappShareAppMessageReturnObject
 
   interface TabItemTapObject {
     /**
@@ -126,33 +194,27 @@ declare namespace Taro {
     imageUrl?: string
   }
 
-  type GetDerivedStateFromProps<P, S> =
-  /**
-   * Returns an update to a component's state based on its new props and old state.
-   *
-   * Note: its presence prevents any of the deprecated lifecycle methods from being invoked
-   */
-  (nextProps: Readonly<P>, prevState: S) => Partial<S> | null;
-
-  interface StaticLifecycle<P, S> {
-    getDerivedStateFromProps?: GetDerivedStateFromProps<P, S>;
+  interface ComponentLifecycle<P, S, SS = any> extends TaroNewLifecycle<P, S, SS> {
+    componentWillMount?(): void
+    componentDidMount?(): void
+    componentWillReceiveProps?(nextProps: Readonly<P>, nextContext: any): void
+    shouldComponentUpdate?(nextProps: Readonly<P>, nextState: Readonly<S>, nextContext: any): boolean
+    componentWillUpdate?(nextProps: Readonly<P>, nextState: Readonly<S>, nextContext: any): void
+    componentWillUnmount?(): void
+    componentDidCatch?(err: string): void
+    componentDidShow?(): void
+    componentDidHide?(): void
+    componentDidNotFound?(opt: PageNotFoundObject): void
   }
 
-  interface NewLifecycle<P, S, SS> {
-    /**
-     * Runs before React applies the result of `render` to the document, and
-     * returns an object to be given to componentDidUpdate. Useful for saving
-     * things such as scroll position before `render` causes changes to it.
-     *
-     * Note: the presence of getSnapshotBeforeUpdate prevents any of the deprecated
-     * lifecycle events from running.
-     */
-    getSnapshotBeforeUpdate?(prevProps: Readonly<P>, prevState: Readonly<S>): SS | null;
-    /**
-     * Called immediately after updating occurs. Not called for the initial render.
-     *
-     * The snapshot is only present if getSnapshotBeforeUpdate is present and returns non-null.
-     */
-    componentDidUpdate?(prevProps: Readonly<P>, prevState: Readonly<S>, snapshot?: SS): void;
+  interface TaroStatic {
+    PageNotFoundObject: PageNotFoundObject
+    PageScrollObject: PageScrollObject
+    ShareAppMessageObject: ShareAppMessageObject
+    ShareAppMessageReturn: ShareAppMessageReturn
+    TabItemTapObject: TabItemTapObject
+    AddToFavoritesObject: AddToFavoritesObject
+    AddToFavoritesReturnObject: AddToFavoritesReturnObject
+    ShareTimelineReturnObject: ShareTimelineReturnObject
   }
 }

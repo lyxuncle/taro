@@ -10,5 +10,19 @@ export const components = {
   },
   Button: {
     bindGetPhoneNumber: ''
-  }
+  },
+  Map: {
+    bindRegionChange: ''
+  },
+  WebView: {
+    height: ''
+  },
+  Input: {
+    'adjust-position': 'true',
+  },
+  Textarea: {
+    'show-confirm-bar': 'true',
+    'adjust-position': 'true',
+    'disable-default-padding': 'false',
+  },
 }
