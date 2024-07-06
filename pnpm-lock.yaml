@@ -4350,6 +4350,15 @@ packages:
       '@jridgewell/trace-mapping': 0.3.9
     dev: true
 
+  /@esbuild/linux-loong64@0.14.54:
+    resolution: {integrity: sha512-bZBrLAIX1kpWelV0XemxBZllyRmM6vgFQQG2GdNb+r3Fkp0FOh1NJSvekXDs7jq70k4euu1cryLMfU+mTXlEpw==, tarball: https://registry.npmjs.org/@esbuild/linux-loong64/-/linux-loong64-0.14.54.tgz}
+    engines: {node: '>=12'}
+    cpu: [loong64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
   /@jridgewell/gen-mapping@0.3.3:
     resolution: {integrity: sha512-HLhSWOLRi875zjjMG/r+Nv0oCW8umGb0BgEhyX3dDX3egwZtB8PqLnjz3yedt8R5StBrzcg4aBpnh8UA9D1BoQ==, tarball: https://registry.npmjs.org/@jridgewell/gen-mapping/-/gen-mapping-0.3.3.tgz}
     engines: {node: '>=6.0.0'}
@@ -4780,6 +4789,50 @@ packages:
       tslib: registry.npmjs.org/tslib@2.6.2
     dev: false
 
+  /chokidar@2.1.8:
+    resolution: {integrity: sha512-ZmZUazfOzf0Nve7duiCKD23PFSCs4JPoYyccjUFF3aQkQadqBhfzhjkwBH2mNOG9cTBwhamM37EIsIkZw3nRgg==, tarball: https://registry.npmjs.org/chokidar/-/chokidar-2.1.8.tgz}
+    deprecated: Chokidar 2 does not receive security updates since 2019. Upgrade to chokidar 3 with 15x fewer dependencies
+    requiresBuild: true
+    dependencies:
+      anymatch: registry.npmjs.org/anymatch@2.0.0(supports-color@6.1.0)
+      async-each: registry.npmjs.org/async-each@1.0.6
+      braces: registry.npmjs.org/braces@2.3.2(supports-color@6.1.0)
+      glob-parent: 3.1.0
+      inherits: registry.npmjs.org/inherits@2.0.4
+      is-binary-path: registry.npmjs.org/is-binary-path@1.0.1
+      is-glob: registry.npmjs.org/is-glob@4.0.3
+      normalize-path: registry.npmjs.org/normalize-path@3.0.0
+      path-is-absolute: registry.npmjs.org/path-is-absolute@1.0.1
+      readdirp: registry.npmjs.org/readdirp@2.2.1(supports-color@6.1.0)
+      upath: registry.npmjs.org/upath@1.2.0
+    optionalDependencies:
+      fsevents: 1.2.13
+    transitivePeerDependencies:
+      - supports-color
+    optional: true
+
+  /chokidar@3.5.3:
+    resolution: {integrity: sha512-Dr3sfKRP6oTcjf2JmUmFJfeVMvXBdegxB0iVQ5eb2V10uFJUCAS8OByZdVAyVb8xXNz3GjjTgj9kLWsZTqE6kw==, tarball: https://registry.npmjs.org/chokidar/-/chokidar-3.5.3.tgz}
+    engines: {node: '>= 8.10.0'}
+    requiresBuild: true
+    dependencies:
+      anymatch: registry.npmjs.org/anymatch@3.1.3
+      braces: registry.npmjs.org/braces@3.0.2
+      glob-parent: registry.npmjs.org/glob-parent@5.1.2
+      is-binary-path: registry.npmjs.org/is-binary-path@2.1.0
+      is-glob: registry.npmjs.org/is-glob@4.0.3
+      normalize-path: registry.npmjs.org/normalize-path@3.0.0
+      readdirp: registry.npmjs.org/readdirp@3.6.0
+    optionalDependencies:
+      fsevents: 2.3.2
+    optional: true
+
+  /combined-stream@1.0.8:
+    resolution: {integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==, tarball: https://registry.npmjs.org/combined-stream/-/combined-stream-1.0.8.tgz}
+    engines: {node: '>= 0.8'}
+    dependencies:
+      delayed-stream: 1.0.0
+
   /compatfactory@2.0.9(typescript@5.3.3):
     resolution: {integrity: sha512-fvO+AWcmbO7P1S+A3mwm3IGr74eHMeq5ZLhNhyNQc9mVDNHT4oe0Gg0ksdIFFNXLK7k7Z/TYcLAUSQdRgh1bsA==, tarball: https://registry.npmjs.org/compatfactory/-/compatfactory-2.0.9.tgz}
     engines: {node: '>=14.9.0'}
@@ -5078,6 +5131,27 @@ packages:
     dependencies:
       locate-path: 6.0.0
       path-exists: 4.0.0
+
+  /follow-redirects@1.15.6:
+    resolution: {integrity: sha512-wWN62YITEaOpSK584EZXJafH1AGpO8RVgElfkuXbTOrPX4fIfOyEpW/CsiNd8JdYrAoOvafRTOEnvsO++qCqFA==, tarball: https://registry.npmjs.org/follow-redirects/-/follow-redirects-1.15.6.tgz}
+    engines: {node: '>=4.0'}
+    peerDependencies:
+      debug: '*'
+    peerDependenciesMeta:
+      debug:
+        optional: true
+
+  /follow-redirects@1.15.6(debug@4.3.4):
+    resolution: {integrity: sha512-wWN62YITEaOpSK584EZXJafH1AGpO8RVgElfkuXbTOrPX4fIfOyEpW/CsiNd8JdYrAoOvafRTOEnvsO++qCqFA==, tarball: https://registry.npmjs.org/follow-redirects/-/follow-redirects-1.15.6.tgz}
+    engines: {node: '>=4.0'}
+    peerDependencies:
+      debug: '*'
+    peerDependenciesMeta:
+      debug:
+        optional: true
+    dependencies:
+      debug: registry.npmjs.org/debug@4.3.4(supports-color@6.1.0)
+    dev: false
 
   /for-each@0.3.3:
     resolution: {integrity: sha512-jqYfLp7mo9vIyQf8ykW2v7A+2N4QjeCeI5+Dz9XraiO1ign81wjiH7Fb9vSOWvQfNtmSa4H2RoQTrrXivdUZmw==, tarball: https://registry.npmjs.org/for-each/-/for-each-0.3.3.tgz}
@@ -6450,6 +6524,10 @@ packages:
     hasBin: true
     dependencies:
       isexe: 2.0.0
+
+  /wrappy@1.0.2:
+    resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==, tarball: https://registry.npmjs.org/wrappy/-/wrappy-1.0.2.tgz}
+    dev: false
 
   /write-file-atomic@2.4.3:
     resolution: {integrity: sha512-GaETH5wwsX+GcnzhPgKcKjJ6M2Cq3/iZp1WyY/X1CSqrW+jVNM9Y7D8EC2sM4ZG/V8wZlSniJnCKWPmBYAucRQ==, tarball: https://registry.npmjs.org/write-file-atomic/-/write-file-atomic-2.4.3.tgz}
@@ -10079,17 +10157,6 @@ packages:
     requiresBuild: true
     optional: true
 
-  registry.npmjs.org/@esbuild/linux-loong64@0.14.54:
-    resolution: {integrity: sha512-bZBrLAIX1kpWelV0XemxBZllyRmM6vgFQQG2GdNb+r3Fkp0FOh1NJSvekXDs7jq70k4euu1cryLMfU+mTXlEpw==, registry: https://registry.yarnpkg.com/, tarball: https://registry.npmjs.org/@esbuild/linux-loong64/-/linux-loong64-0.14.54.tgz}
-    name: '@esbuild/linux-loong64'
-    version: 0.14.54
-    engines: {node: '>=12'}
-    cpu: [loong64]
-    os: [linux]
-    requiresBuild: true
-    dev: false
-    optional: true
-
   registry.npmjs.org/@esbuild/linux-loong64@0.19.7:
     resolution: {integrity: sha512-BVFQla72KXv3yyTFCQXF7MORvpTo4uTA8FVFgmwVrqbB/4DsBFWilUm1i2Oq6zN36DOZKSVUTb16jbjedhfSHw==, registry: https://registry.yarnpkg.com/, tarball: https://registry.npmjs.org/@esbuild/linux-loong64/-/linux-loong64-0.19.7.tgz}
     name: '@esbuild/linux-loong64'
@@ -11332,7 +11399,7 @@ packages:
     dependencies:
       callsites: 3.1.0
       graceful-fs: registry.npmjs.org/graceful-fs@4.2.11
-      source-map: registry.npmjs.org/source-map@0.6.1
+      source-map: 0.6.1
     dev: true
 
   registry.npmjs.org/@jest/source-map@29.4.3:
@@ -25932,19 +25999,6 @@ packages:
     name: fs.realpath
     version: 1.0.0
 
-  registry.npmjs.org/fsevents@1.2.13:
-    resolution: {integrity: sha512-oWb1Z6mkHIskLzEJ/XWX0srkpkTQ7vaopMQkyaEIoq0fmtFVxOthb8cCxeT+p3ynTdkk/RZwbgG4brR5BeWECw==, registry: https://registry.yarnpkg.com/, tarball: https://registry.npmjs.org/fsevents/-/fsevents-1.2.13.tgz}
-    name: fsevents
-    version: 1.2.13
-    engines: {node: '>= 4.0'}
-    os: [darwin]
-    deprecated: The v1 package contains DANGEROUS / INSECURE binaries. Upgrade to safe fsevents v2
-    requiresBuild: true
-    dependencies:
-      bindings: registry.npmjs.org/bindings@1.5.0
-      nan: registry.npmjs.org/nan@2.17.0
-    optional: true
-
   registry.npmjs.org/fsevents@2.3.2:
     resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==, registry: https://registry.yarnpkg.com/, tarball: https://registry.npmjs.org/fsevents/-/fsevents-2.3.2.tgz}
     name: fsevents
@@ -27253,7 +27307,7 @@ packages:
     engines: {node: '>=8.0.0'}
     dependencies:
       eventemitter3: registry.npmjs.org/eventemitter3@4.0.7
-      follow-redirects: registry.npmjs.org/follow-redirects@1.15.2
+      follow-redirects: 1.15.6
       requires-port: registry.npmjs.org/requires-port@1.0.0
     transitivePeerDependencies:
       - debug
@@ -38577,7 +38631,7 @@ packages:
       etag: registry.npmjs.org/etag@1.8.1
       fresh: registry.npmjs.org/fresh@0.5.2
       http-errors: registry.npmjs.org/http-errors@2.0.0
-      mime: registry.npmjs.org/mime@1.6.0
+      mime: 1.6.0
       ms: 2.1.3
       on-finished: registry.npmjs.org/on-finished@2.4.1
       range-parser: registry.npmjs.org/range-parser@1.2.1
